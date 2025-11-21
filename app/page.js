@@ -5,6 +5,7 @@ import UploadZone from '@/components/UploadZone';
 import KPICards from '@/components/KPICards';
 import ChartPie from '@/components/ChartPie';
 import ChartBar from '@/components/ChartBar';
+import ChartLine from '@/components/ChartLine';
 import Comparison from '@/components/Comparison';
 import TopTable from '@/components/TopTable';
 import { processExcel } from '@/utils/processExcel';
@@ -78,6 +79,11 @@ export default function Home() {
             <p className="text-gray-600 mt-2">
               Dr. Roberto Zambelli - Análise de Notas Fiscais
             </p>
+            {dashboardData.dateRange && (
+              <p className="text-sm text-blue-600 font-semibold mt-1">
+                📅 Período: {dashboardData.dateRange.label} ({dashboardData.dateRange.months} meses)
+              </p>
+            )}
           </div>
           <button
             onClick={handleReset}
@@ -92,10 +98,18 @@ export default function Home() {
           <KPICards kpis={dashboardData.kpis} />
         </div>
 
+        {/* Gráfico de Evolução Temporal */}
+        <div className="mb-6">
+          <ChartLine timeline={dashboardData.timeline} />
+        </div>
+
         {/* Gráficos */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <ChartPie formasPagamento={dashboardData.formasPagamento} />
-          <ChartBar formasPagamento={dashboardData.formasPagamento} />
+          <ChartBar 
+            formasPagamento={dashboardData.formasPagamento} 
+            dateRange={dashboardData.dateRange}
+          />
         </div>
 
         {/* Comparativo */}

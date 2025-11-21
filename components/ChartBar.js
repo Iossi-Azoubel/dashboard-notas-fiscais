@@ -20,7 +20,7 @@ ChartJS.register(
   Legend
 );
 
-export default function ChartBar({ formasPagamento }) {
+export default function ChartBar({ formasPagamento, dateRange }) {
   const labels = [];
   const taxas = [];
   const colors = [];
@@ -85,7 +85,6 @@ export default function ChartBar({ formasPagamento }) {
   };
 
   const totalTaxas = taxas.reduce((a, b) => a + b, 0);
-  const economiaAnual = totalTaxas * 12;
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
@@ -103,11 +102,20 @@ export default function ChartBar({ formasPagamento }) {
           <strong>R$ {totalTaxas.toLocaleString('pt-BR', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
-          })}</strong> mensalmente. Incentivando PIX, você economizaria{' '}
-          <strong>~R$ {economiaAnual.toLocaleString('pt-BR', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-          })}/ano</strong>!
+          })}</strong> no período total
+          {dateRange && dateRange.months > 1 && (
+            <>
+              {' '}({dateRange.months} meses), uma média de{' '}
+              <strong>R$ {(totalTaxas / dateRange.months).toLocaleString('pt-BR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              })}/mês</strong>. Incentivando PIX, você economizaria{' '}
+              <strong>~R$ {(totalTaxas * 12 / dateRange.months).toLocaleString('pt-BR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              })}/ano</strong>!
+            </>
+          )}
         </p>
       </div>
     </div>

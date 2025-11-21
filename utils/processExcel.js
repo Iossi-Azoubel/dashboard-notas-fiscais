@@ -19,12 +19,12 @@ export const processExcel = (file) => {
 
         // Limpar espaços extras dos nomes das colunas
         jsonData = jsonData.map(row => {
-            const cleanRow = {};
-            Object.keys(row).forEach(key => {
-                const cleanKey = key.trim(); // Remove espaços do início e fim
-                cleanRow[cleanKey] = row[key];
-             });
-            return cleanRow;
+          const cleanRow = {};
+          Object.keys(row).forEach(key => {
+            const cleanKey = key.trim(); // Remove espaços do início e fim
+            cleanRow[cleanKey] = row[key];
+          });
+          return cleanRow;
         });
         
         // Processar os dados
@@ -106,6 +106,12 @@ const analyzeData = (data) => {
   // 5. Estatísticas de cartão vs PIX
   const cartaoStats = calculateCardStats(formasSimplificadas);
 
+  // 6. Análise temporal (por mês)
+  const timelineData = analyzeTimeline(validData);
+
+  // 7. Detectar período dos dados
+  const dateRange = getDateRange(validData);
+
   return {
     kpis: {
       totalBruto: totalBruto.toFixed(2),
@@ -117,7 +123,9 @@ const analyzeData = (data) => {
     },
     formasPagamento: formasSimplificadas,
     top5,
-    cartaoVsPix: cartaoStats
+    cartaoVsPix: cartaoStats,
+    timeline: timelineData,
+    dateRange: dateRange
   };
 };
 
@@ -174,4 +182,88 @@ const calculateCardStats = (formas) => {
     },
     economiaPotencial: cartao.taxas.toFixed(2)
   };
+};
+
+const analyzeTimeline = (data) => {
+  const monthlyData = {};
+  
+  data.forEach(row => {
+    const dateValue = row['DATA DA EMISSAO DA NOTA'];
+    if (!dateValue) return;
+    
+    let date;
+    if (typeof dateValue === 'number') {
+      // Data em formato Excel (número serial)
+      date = new Date((dateValue - 25569) * 86400 * 1000);
+    } else {
+      date = new Date(dateValue);
+    }
+    
+    if (isNaN(date.getTime())) return;
+    
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    
+    if (!monthlyData[monthKey]) {
+      monthlyData[monthKey] = {
+        faturamento: 0,
+        impostos: 0,
+        taxas: 0,
+        notas: 0
+      };
+    }
+    
+    monthlyData[monthKey].faturamento += row['VALOR BRUTO DA NOTA FISCAL'] || 0;
+    monthlyData[monthKey].impostos += row['VALOR DO IMPOSTO'] || 0;
+    monthlyData[monthKey].taxas += row['VALOR TAXA DE CARTAO'] || 0;
+    monthlyData[monthKey].notas += 1;
+  });
+  
+  // Ordenar por data
+  const sortedMonths = Object.keys(monthlyData).sort();
+  
+  return {
+    labels: sortedMonths.map(m => {
+      const [year, month] = m.split('-');
+      const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+      return `${monthNames[parseInt(month) - 1]}/${year}`;
+    }),
+    faturamento: sortedMonths.map(m => monthlyData[m].faturamento),
+    impostos: sortedMonths.map(m => monthlyData[m].impostos),
+    taxas: sortedMonths.map(m => monthlyData[m].taxas),
+    notas: sortedMonths.map(m => monthlyData[m].notas),
+    rawData: monthlyData
+  };
+};
+
+const getDateRange = (data) => {
+  let minDate = null;
+  let maxDate = null;
+  
+  data.forEach(row => {
+    const dateValue = row['DATA DA EMISSAO DA NOTA'];
+    if (!dateValue) return;
+    
+    let date;
+    if (typeof dateValue === 'number') {
+      date = new Date((dateValue - 25569) * 86400 * 1000);
+    } else {
+      date = new Date(dateValue);
+    }
+    
+    if (isNaN(date.getTime())) return;
+    
+    if (!minDate || date < minDate) minDate = date;
+    if (!maxDate || date > maxDate) maxDate = date;
+  });
+  
+  if (!minDate || !maxDate) {
+    return { start: null, end: null, months: 0, label: 'Período não detectado' };
+  }
+  
+  const months = ((maxDate.getFullYear() - minDate.getFullYear()) * 12) + (maxDate.getMonth() - minDate.getMonth()) + 1;
+  
+  const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  const label = `${monthNames[minDate.getMonth()]}/${minDate.getFullYear()} - ${monthNames[maxDate.getMonth()]}/${maxDate.getFullYear()}`;
+  
+  return { start: minDate, end: maxDate, months, label };
 };
